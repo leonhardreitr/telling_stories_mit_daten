@@ -128,3 +128,50 @@ rbind(elliot_smith, death_grips) |>
   theme(legend.position = "none")
 ```
 
+<h2><b> Web Scraping </b></h2>
+
+```{r}
+website_extract <- "<p>Hi, I’m <b>Lenni</b> Reiter</p>"
+website_extract
+
+lenni_d <- 
+  read_html(website_extract)
+
+lenni_d |> 
+  html_elements("b") |> 
+  html_text()
+```
+
+```{r}
+#books_data <- read_html("https://rohansbooks.com")
+
+#write_html(books_data, "raw_data.html")
+
+books_data <- read_html("raw_data.html")
+
+books_data
+
+text_d <- 
+  books_data |> 
+  html_elements("li") |> 
+    html_text()
+
+all_books <- 
+  tibble(book = text_d)
+
+# clean
+
+all_books <-
+  all_books |> 
+    mutate(book = str_squish(book)) |> 
+    separate(book, into = c("author", "name"), sep = "\\, [[:digit:]]{4}\\, ")
+  
+all_books |> 
+  mutate(
+    first_letter = str_sub(author,1,1)
+  ) |> 
+  count(.by = first_letter, 
+        sort = TRUE) |> 
+  kable(col.names = c("First Name", "Count"))
+```
+
