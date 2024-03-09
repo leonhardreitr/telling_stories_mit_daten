@@ -9,7 +9,6 @@ format:
     self-contained: true
     toc: true
     toc-depth: 3
-    code-fold: true
 editor_options: 
   chunk_output_type: console
 editor: 
@@ -41,3 +40,91 @@ library(tidyverse)
 library(usethis)
 library(xml2)
 ```
+
+## Psyarxiv
+
+```{r}
+#| output: false
+
+arxiv <- GET("http://export.arxiv.org/api/query?id_list=2111.09299")
+
+status_code(arxiv)
+```
+
+```{r}
+#| output: false
+
+
+content(arxiv) |>
+  read_xml() |>
+  html_structure()
+d <- 
+  tibble(
+    title = content(arxiv) |> 
+      read_xml() |> 
+      xml_child(search = 8) |>
+      xml_child(search = 4) |> 
+      xml_text(),
+    link = content(arxiv) |> 
+      read_xml() |> 
+      xml_child(search = 8) |>
+      xml_child(search = 9) |> 
+      xml_attr("href")
+  )
+```
+
+### Nasa
+
+```{r}
+nasa <-
+  GET("https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&date=2024-03-9")
+status_code(nasa)
+
+
+knitr::include_graphics("https://apod.nasa.gov/apod/image/2403/2024_03_05_Pons-Brooks_Revuca_1200px.png")
+```
+
+### json
+
+```{r}
+politics_datasets <-
+  fromJSON("https://demo.dataverse.org/api/search?q=politics")
+
+```
+
+```{r}
+#| output: false
+
+as_tibble(politics_datasets[["data"]][["items"]])
+```
+
+# spotify
+
+How is Elliot Smith's valence compared to death grips??
+
+```{r}
+#| warning: false
+#| message: false
+
+# elliot_smith ----
+elliot_smith <- readRDS("~/Desktop/R stuff/telling_stories_mit_daten/elliot_smith.rds")
+
+# death grips ----
+death_grips <- readRDS("~/Desktop/R stuff/telling_stories_mit_daten/death_grips.rds")
+
+rbind(elliot_smith, death_grips) |>
+  select(artist_name, album_release_date, valence) |>
+  mutate(album_release_date = ymd(album_release_date)) |> 
+  ggplot(aes( x = album_release_date, y = valence, color = artist_name)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth() +
+  facet_wrap(facets = vars(artist_name), dir = "v") +
+  labs(
+    x = "Album release date",
+    y = "Valence",
+  ) +
+  theme_bw() +
+  scale_color_brewer(palette = "Set2") +
+  theme(legend.position = "none")
+```
+
