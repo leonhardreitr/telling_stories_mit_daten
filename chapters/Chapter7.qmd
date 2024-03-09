@@ -39,6 +39,7 @@ library(tesseract)
 library(tidyverse)
 library(usethis)
 library(xml2)
+library(ggthemes)
 ```
 
 ## Psyarxiv
@@ -58,17 +59,17 @@ status_code(arxiv)
 content(arxiv) |>
   read_xml() |>
   html_structure()
-d <- 
+d <-
   tibble(
-    title = content(arxiv) |> 
-      read_xml() |> 
+    title = content(arxiv) |>
+      read_xml() |>
       xml_child(search = 8) |>
-      xml_child(search = 4) |> 
+      xml_child(search = 4) |>
       xml_text(),
-    link = content(arxiv) |> 
-      read_xml() |> 
+    link = content(arxiv) |>
+      read_xml() |>
       xml_child(search = 8) |>
-      xml_child(search = 9) |> 
+      xml_child(search = 9) |>
       xml_attr("href")
   )
 ```
@@ -89,7 +90,6 @@ knitr::include_graphics("https://apod.nasa.gov/apod/image/2403/2024_03_05_Pons-B
 ```{r}
 politics_datasets <-
   fromJSON("https://demo.dataverse.org/api/search?q=politics")
-
 ```
 
 ```{r}
@@ -114,8 +114,8 @@ death_grips <- readRDS("~/Desktop/R stuff/telling_stories_mit_daten/death_grips.
 
 rbind(elliot_smith, death_grips) |>
   select(artist_name, album_release_date, valence) |>
-  mutate(album_release_date = ymd(album_release_date)) |> 
-  ggplot(aes( x = album_release_date, y = valence, color = artist_name)) +
+  mutate(album_release_date = ymd(album_release_date)) |>
+  ggplot(aes(x = album_release_date, y = valence, color = artist_name)) +
   geom_point(alpha = 0.3) +
   geom_smooth() +
   facet_wrap(facets = vars(artist_name), dir = "v") +
@@ -134,44 +134,208 @@ rbind(elliot_smith, death_grips) |>
 website_extract <- "<p>Hi, I’m <b>Lenni</b> Reiter</p>"
 website_extract
 
-lenni_d <- 
+lenni_d <-
   read_html(website_extract)
 
-lenni_d |> 
-  html_elements("b") |> 
+lenni_d |>
+  html_elements("b") |>
   html_text()
 ```
 
 ```{r}
-#books_data <- read_html("https://rohansbooks.com")
+# books_data <- read_html("https://rohansbooks.com")
 
-#write_html(books_data, "raw_data.html")
+# write_html(books_data, "raw_data.html")
 
 books_data <- read_html("raw_data.html")
 
 books_data
 
-text_d <- 
-  books_data |> 
-  html_elements("li") |> 
-    html_text()
+text_d <-
+  books_data |>
+  html_elements("li") |>
+  html_text()
 
-all_books <- 
+all_books <-
   tibble(book = text_d)
 
 # clean
 
 all_books <-
-  all_books |> 
-    mutate(book = str_squish(book)) |> 
-    separate(book, into = c("author", "name"), sep = "\\, [[:digit:]]{4}\\, ")
-  
-all_books |> 
+  all_books |>
+  mutate(book = str_squish(book)) |>
+  separate(book, into = c("author", "name"), sep = "\\, [[:digit:]]{4}\\, ")
+
+all_books |>
   mutate(
-    first_letter = str_sub(author,1,1)
-  ) |> 
-  count(.by = first_letter, 
-        sort = TRUE) |> 
+    first_letter = str_sub(author, 1, 1)
+  ) |>
+  count(
+    .by = first_letter,
+    sort = TRUE
+  ) |>
   kable(col.names = c("First Name", "Count"))
+```
+
+## primes
+
+```{r}
+set.seed(420)
+
+sim_king <-
+  tibble(
+    prime_minister = babynames |>
+      filter(prop > 0.01) |>
+      distinct(name) |>
+      unlist() |>
+      sample(size = 10, replace = FALSE),
+    birth_year = sample(1700:1990, size = 10, replace = TRUE),
+    years_lived = sample(50:100, size = 10, replace = TRUE),
+    death_year = birth_year + years_lived
+  ) |>
+  arrange(birth_year)
+```
+
+```{r}
+# raw_data <-
+# read_html(
+#   "https://en.wikipedia.org/wiki/List_of_chancellors_of_Austria"
+# )
+# write_html(raw_data, "pms.html")
+
+raw_data <- read_html("pms.html")
+
+first_try <-
+  raw_data |>
+  html_element(".wikitable") |>
+  html_table()
+
+inital_clean <-
+  first_try |>
+  clean_names() |>
+  rename(raw_text = name) |>
+  select(raw_text) |>
+  distinct() |>
+  separate(
+    raw_text,
+    into = c("name", "not_name"), sep = "\\(", extra = "merge",
+  ) |>
+  mutate(
+    date = str_extract(not_name, "[[:digit:]]{4}–[[:digit:]]{4}"),
+    born = str_extract(not_name, "born (\\d{4})")
+  ) |>
+  select(name, date, born)
+
+clean_d <- 
+inital_clean |>
+  separate(date,
+    into = c("birth", "died"),
+    sep = "–"
+  ) |>
+  mutate(
+    born = str_remove_all(born, "born[[:space:]]"),
+    birth = if_else(!is.na(born), born, birth)
+  ) |> 
+  select(-born) |>
+  rename(born = birth) |>
+  mutate(across(c(born, died), as.integer)) |>
+  mutate(Age_at_Death = died - born,
+         age = if_else(is.na(died), 2024 - born, Age_at_Death)) |>
+  distinct() # Some of them might be selected twice.
+
+clean_d |>
+  select(name, born, died, age) |> 
+  head() |>
+  kable(
+    col.names = c("Chancellors", "Birth year", "Death year", "Age")
+    )
+
+
+clean_d |>
+  mutate(
+    still_alive = if_else(is.na(died), "Yes", "No"),
+    died = if_else(is.na(died), as.integer(2024), died)
+  ) |>
+  mutate(name = as_factor(name)) |>
+  ggplot(
+    aes(x = born, xend = died, y = name, yend = name, color = still_alive)
+    ) +
+  geom_segment() +
+  geom_point(aes(born)) +
+  geom_point(aes(died)) +
+  labs(
+    title = "Chancellors of Austria",
+    subtitle = "scrapped from wikipedia <3",
+    x = "Year of birth", y = "Chancellors", color = "Is currently alive"
+    ) + 
+  theme_base(base_size = 50) +
+  scale_color_manual(values = c("#912411", "#d3cfc3")) +
+  theme(
+        plot.title.position = "plot",
+        legend.position = "bottom") 
+
+ggsave("Chancellors.png", width = 2560, height = 2559, units = "px",dpi = 500)
+```
+
+## Iterations
+
+```{r}
+first_bit <- "https://www.rba.gov.au/publications/smp/2023/"
+last_bit <- "/pdf/overview.pdf"
+
+statements_of_interest <-
+  tibble(
+    address =
+      c(
+        paste0(first_bit, "feb", last_bit),
+        paste0(first_bit, "may", last_bit)
+      ),
+    local_save_name = c("2023-02.pdf", "2023-05.pdf")
+    )
+
+visit_download_wait <- function(address_to_visit,
+           where_to_save_it_locally) {
+    download.file(url = address_to_visit,
+                  destfile = where_to_save_it_locally)
+    
+    print(paste("Done with", address_to_visit, "at", Sys.time()))
+    
+    Sys.sleep(sample(5:10, 1))
+}
+
+walk2(
+  statements_of_interest$address,
+  statements_of_interest$local_save_name,
+  ~ visit_download_wait(.x, .y)
+)
+```
+
+# Pdf
+
+```{r}
+first_example <- pdf_text("first_example.pdf")
+
+first_example
+
+class(first_example)
+
+third_exp <- pdf_text("third_example.pdf")
+
+third_exp
+
+class(third_exp)
+
+jane_eyre <- tibble(
+  raw_text = third_exp,
+  page_number = c(1:2)
+)
+
+d <- 
+jane_eyre |> 
+  separate_rows(
+    raw_text,
+    sep = "\\n",
+    convert = FALSE
+  )
 ```
 
