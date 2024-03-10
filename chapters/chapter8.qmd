@@ -36,5 +36,47 @@ library(stringi)
 library(testthat)
 library(tidyverse)
 library(validate)
+library(cowplot)
+
+theme_set(
+  theme_cowplot()
+)
+```
+
+```{r}
+#| label: sim data
+
+set.seed(420)
+sim_d <-  
+  tibble(
+  state = state.name,
+  pop = runif(n = 50, min = 0, max = 50) |> 
+    round(digits = 2)
+)
+
+unedited_data <-
+  c("Alabama 5 Alaska 0.7 Arizona 7 Arkansas 3 California 40")
+
+d_clean # <- 
+tibble(raw = unedited_data) |> 
+  separate(
+    col = raw,
+    into = letters[1:5],
+    sep = "(?<=[[:digit:]]) " # A bracket preceded by numbers
+  ) |>
+  pivot_longer(
+    cols = letters[1:5],
+    names_to = "drop_me",
+    values_to = "separate_me"
+  ) |>
+  separate(
+    col = separate_me,
+    into = c("state", "population"),
+    sep = " (?=[[:digit:]])" # A space followed by a number
+  ) |>
+  mutate(state = fct(state),
+         population = as.numeric(population)) |> 
+  select(-drop_me)
+
 ```
 
