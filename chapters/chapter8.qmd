@@ -1,0 +1,40 @@
+---
+title: "Chapter 7"
+author: Leonhard Reiter
+format: 
+  html:
+    theme: cosmo
+    html-table-processing: none
+    html-math-method: katex
+    self-contained: true
+    toc: true
+    toc-depth: 3
+editor_options: 
+  chunk_output_type: console
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+```{r}
+#| label: Set up
+#| message: false
+#| warning: false
+#| code-fold: true
+#| code-summary: packages
+
+library(janitor)
+library(knitr)
+library(lubridate)
+library(modelsummary)
+library(opendatatoronto)
+library(pdftools)
+library(pointblank)
+library(readxl)
+library(scales)
+library(stringi)
+library(testthat)
+library(tidyverse)
+library(validate)
+```
+
