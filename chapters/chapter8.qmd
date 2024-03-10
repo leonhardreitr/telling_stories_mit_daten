@@ -37,9 +37,10 @@ library(testthat)
 library(tidyverse)
 library(validate)
 library(cowplot)
+library(ThemePark)
 
 theme_set(
-  theme_cowplot()
+  theme_barbie()
 )
 ```
 
@@ -77,6 +78,48 @@ tibble(raw = unedited_data) |>
   mutate(state = fct(state),
          population = as.numeric(population)) |> 
   select(-drop_me)
+```
 
+```{r}
+messy_string <- paste(
+  c("Patricia, Ptricia, PatricIa, Patric1a, PatricIa"),
+  c("PatrIcia, Patricia, Patricia, Patricia , 8atricia"),
+  sep = ", "
+)
+
+messy_tib <- 
+tibble(names = messy_string) |> 
+  separate_rows(names, sep = ", ")
+
+messy_tib |> count(names, sort = T)
+```
+
+```{r}
+youth_survey_data <-
+  tibble(ages = c(
+    15.9, 14.9, 16.6, 15.8, 16.7, 17.9, 12.6, 11.5, 16.2, 19.5, 150
+  ))
+
+youth_survey_data |>
+  ggplot(aes(x = ages)) +
+  geom_histogram(binwidth = 1, fill = barbie_theme_colors[4], col = "black") +
+  labs(
+    x = "Age of respondent",
+    y = "Number of respondents"
+  )
+
+youth_survey_data_fixed <- youth_survey_data |> 
+  mutate(ages = if_else(ages > 20, ages/10, ages))
+
+youth_survey_data_fixed |>
+  ggplot(aes(x = ages)) +
+  geom_histogram(binwidth = 1,
+                 col = "black",
+                 fill = barbie_theme_colors[4]) +
+  labs(
+    x = "Age of respondent",
+    y = "Number of respondents"
+  ) +
+  scale_x_continuous(n.breaks = nrow(youth_survey_data_fixed))
 ```
 
