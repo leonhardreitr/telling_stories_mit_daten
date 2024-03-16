@@ -22,7 +22,7 @@ editor:
 #| warning: false
 #| code-fold: true
 #| code-summary: packages
-
+library(patchwork)
 library(janitor)
 library(knitr)
 library(lubridate)
@@ -48,18 +48,18 @@ theme_set(
 #| label: sim data
 
 set.seed(420)
-sim_d <-  
+sim_d <-
   tibble(
-  state = state.name,
-  pop = runif(n = 50, min = 0, max = 50) |> 
-    round(digits = 2)
-)
+    state = state.name,
+    pop = runif(n = 50, min = 0, max = 50) |>
+      round(digits = 2)
+  )
 
 unedited_data <-
   c("Alabama 5 Alaska 0.7 Arizona 7 Arkansas 3 California 40")
 
-d_clean # <- 
-tibble(raw = unedited_data) |> 
+d_clean # <-
+tibble(raw = unedited_data) |>
   separate(
     col = raw,
     into = letters[1:5],
@@ -75,8 +75,10 @@ tibble(raw = unedited_data) |>
     into = c("state", "population"),
     sep = " (?=[[:digit:]])" # A space followed by a number
   ) |>
-  mutate(state = fct(state),
-         population = as.numeric(population)) |> 
+  mutate(
+    state = fct(state),
+    population = as.numeric(population)
+  ) |>
   select(-drop_me)
 ```
 
@@ -87,8 +89,8 @@ messy_string <- paste(
   sep = ", "
 )
 
-messy_tib <- 
-tibble(names = messy_string) |> 
+messy_tib <-
+  tibble(names = messy_string) |>
   separate_rows(names, sep = ", ")
 
 messy_tib |> count(names, sort = T)
@@ -103,7 +105,7 @@ messy_clean <-
     names = str_trim(names, side = c("right"))
   )
 
-messy_clean |> count( names, sort = T)
+messy_clean |> count(names, sort = T)
 
 check_me <-
   messy_clean |>
@@ -132,14 +134,16 @@ youth_survey_data |>
     y = "Number of respondents"
   )
 
-youth_survey_data_fixed <- youth_survey_data |> 
-  mutate(ages = if_else(ages > 20, ages/10, ages))
+youth_survey_data_fixed <- youth_survey_data |>
+  mutate(ages = if_else(ages > 20, ages / 10, ages))
 
 youth_survey_data_fixed |>
   ggplot(aes(x = ages)) +
-  geom_histogram(binwidth = 1,
-                 col = "black",
-                 fill = barbie_theme_colors[4]) +
+  geom_histogram(
+    binwidth = 1,
+    col = "black",
+    fill = barbie_theme_colors[4]
+  ) +
   labs(
     x = "Age of respondent",
     y = "Number of respondents"
@@ -156,8 +160,6 @@ australian_names_data <-
 
 australian_names_data |>
   count(country, sort = TRUE)
-
-
 ```
 
 ### Validate (my feelings)
@@ -165,18 +167,20 @@ australian_names_data |>
 set.seed(99)
 n <- 1000
 
-d_issues <- 
-  tibble(age = c(
+d_issues <-
+  tibble(
+    age = c(
       runif(n = n, min = 0, max = 120) |> round(),
       1000
     ),
-    
-    gender = c(sample(x = c("male", "female", "other","Prefer not to say"),
-                    size = n,
-                    replace = T,
-                    prob = c(0.4,0.4,0.1,0.1)), "tasmania"),
-    income = rexp(n+1, rate = 0.10) |> round() |> as.character()
-    )
+    gender = c(sample(
+      x = c("male", "female", "other", "Prefer not to say"),
+      size = n,
+      replace = T,
+      prob = c(0.4, 0.4, 0.1, 0.1)
+    ), "tasmania"),
+    income = rexp(n + 1, rate = 0.10) |> round() |> as.character()
+  )
 ```
 
 ```{r}
@@ -185,7 +189,8 @@ rules <- validator(
   is.character(gender),
   is.numeric(income),
   age < 120,
-  gender %in% c("female", "male", "other", "prefer not to disclose"))
+  gender %in% c("female", "male", "other", "prefer not to disclose")
+)
 
 out <- confront(d_issues, rules)
 summary(out)
@@ -217,3 +222,178 @@ models <- list(
 modelsummary(models)
 ```
 
+### Date me
+
+```{r}
+toronto_shelters_2017 <-
+  search_packages("Daily Shelter Occupancy") |>
+  list_package_resources() |>
+  filter(name == "Daily shelter occupancy 2017.csv") |>
+  group_split(name) |>
+  map_dfr(get_resource, .id = "file")
+
+write_csv(
+  x = toronto_shelters_2017,
+  file = "toronto_shelters_2017.csv"
+)
+
+d <- toronto_shelters_2017 |>
+  clean_names() |>
+  select(occupancy_date, sector, occupancy, capacity)
+
+d <-
+  d |>
+  mutate(
+    occupancy_date =
+      str_remove(
+        occupancy_date,
+        "T[:digit:]{2}:[:digit:]{2}:[:digit:]{2}"
+      ),
+    generated_year = ymd(occupancy_date, quiet = T)
+  )
+p1 <-
+  d |>
+  separate(generated_year,
+    into = c("one", "two", "three"),
+    sep = "-",
+    remove = FALSE
+  ) |>
+  count(three) |>
+  ggplot(aes(x = three, y = n)) +
+  geom_point(size = 2, col = barbie_theme_colors[1]) +
+  labs(x = "")
+
+p2 <-
+  d |>
+  mutate(row_number = c(seq_len(nrow(d)))) |>
+  ggplot(aes(x = row_number, y = generated_year), alpha = 0.1) +
+  geom_point(alpha = 0.3, col = barbie_theme_colors[1]) +
+  labs(
+    x = "Row number",
+    y = "Date"
+  )
+
+p1 / p2
+```
+
+```{r}
+d_by_day <-
+  d |>
+  drop_na(capacity, occupancy) |>
+  summarise(
+    capacity = sum(capacity),
+    occupancy = sum(occupancy),
+    usage = occupancy / capacity,
+    .by = generated_year
+  )
+
+d_by_day |>
+  ggplot(aes(x = day(generated_year), y = occupancy)) +
+  geom_point(col = "#1D6001", alpha = .3) +
+  facet_wrap(
+    vars(month(generated_year, label = TRUE)),
+    scales = "free_x"
+  ) +
+  scale_y_continuous(limits = c(0, NA)) +
+  labs(
+    color = "Type",
+    x = "Day",
+    y = "Occupancy (number)"
+  )
+
+padded_1_to_12 <- sprintf("%02d", 1:12)
+
+list_of_dates_to_flip <-
+  paste(2017, padded_1_to_12,
+    rep(padded_1_to_12, each = 12),
+    sep = "-"
+  )
+
+d <-
+  d |>
+  mutate(
+    year = year(generated_year),
+    month = month(generated_year),
+    day = day(generated_year),
+    generated_year = as.character(generated_year),
+    changed_date = if_else(
+      generated_year %in% list_of_dates_to_flip,
+      paste(year, day, month, sep = "-"),
+      paste(year, month, day, sep = "-"),
+    ),
+    changed_date = ymd(changed_date)
+  ) |>
+  select(-year, -month, -day)
+
+
+d |>
+  mutate(counter = seq_len(nrow(d))) |>
+  ggplot(aes(x = counter, y = changed_date)) +
+  geom_point(alpha = 0.3) +
+  labs(
+    x = "Row in the dataset",
+    y = "Date of that row"
+  ) +
+  theme_minimal()
+
+d |>
+  drop_na(occupancy, capacity) |>
+  summarise(
+    occupancy = sum(occupancy),
+    .by = changed_date
+  ) |>
+  ggplot(aes(x = day(changed_date), y = occupancy)) +
+  geom_point(alpha = 0.3) +
+  scale_y_continuous(limits = c(0, NA)) +
+  labs(
+    color = "Type",
+    x = "Changed day",
+    y = "Occupancy (number)"
+  ) +
+  facet_wrap(vars(month(changed_date, label = TRUE)),
+    scales = "free_x"
+  ) +
+  theme_minimal()
+```
+
+### sim runn
+
+```{r}
+num_obs <- 2000
+expected_relationship <- 8.4
+fast_time <- 15
+good_time <- 30
+
+d <-
+  tibble(
+    five_km_time = runif(num_obs, min = fast_time, max = good_time),
+    noise = rnorm(num_obs, mean = 0, sd = 20),
+    marathon_time = five_km_time * expected_relationship + noise
+  ) |>
+  mutate(
+    five_km_time = round(x = five_km_time, digits = 1),
+    marathon_time = round(x = marathon_time, digits = 1)
+  ) |>
+  select(-noise)
+```
+
+```{r}
+stop_if_not(
+  class(d$marathon_time) == "numeric",
+  class(d$five_km_time) == "numeric",
+  nrow(d) == 2000
+)
+
+if (class(d$marathon_time) == "numeric" &
+  class(d$five_km_time) == "numeric" &
+  nrow(d) == 2000) {
+  print("All good")
+}
+
+if (max(d$marathon_time) < 300 &
+  min(d$marathon_time) > 118) {
+  print("All good")
+} else {
+  print("OH OH")
+}
+```
