@@ -1,5 +1,5 @@
 ---
-title: "Chapter 7"
+title: "Chapter 9"
 author: Leonhard Reiter
 format: 
   html:
@@ -92,6 +92,30 @@ tibble(names = messy_string) |>
   separate_rows(names, sep = ", ")
 
 messy_tib |> count(names, sort = T)
+
+messy_clean <-
+  messy_tib |>
+  mutate(
+    names = str_to_title(names),
+    names = str_replace_all(names, "8atricia", "Patricia"),
+    names = str_replace_all(names, "Ptricia", "Patricia"),
+    names = str_replace_all(names, "Patric1a", "Patricia"),
+    names = str_trim(names, side = c("right"))
+  )
+
+messy_clean |> count( names, sort = T)
+
+check_me <-
+  messy_clean |>
+  filter(names != "Patricia")
+
+if (nrow(check_me) > 0) {
+  print("Patricia is still written wrong somewhere")
+} else if (nrow(check_me) == 0) {
+  print("u good")
+}
+
+stopifnot(nrow(check_me) == 0)
 ```
 
 ```{r}
@@ -121,5 +145,75 @@ youth_survey_data_fixed |>
     y = "Number of respondents"
   ) +
   scale_x_continuous(n.breaks = nrow(youth_survey_data_fixed))
+
+australian_names_data <-
+  tibble(
+    country = c(
+      "Australie", "Austrelia", "Australie", "Australie", "Aeustralia",
+      "Austraia", "Australia", "Australia", "Australia", "Australia"
+    )
+  )
+
+australian_names_data |>
+  count(country, sort = TRUE)
+
+
+```
+
+### Validate (my feelings)
+```{r}
+set.seed(99)
+n <- 1000
+
+d_issues <- 
+  tibble(age = c(
+      runif(n = n, min = 0, max = 120) |> round(),
+      1000
+    ),
+    
+    gender = c(sample(x = c("male", "female", "other","Prefer not to say"),
+                    size = n,
+                    replace = T,
+                    prob = c(0.4,0.4,0.1,0.1)), "tasmania"),
+    income = rexp(n+1, rate = 0.10) |> round() |> as.character()
+    )
+```
+
+```{r}
+rules <- validator(
+  is.numeric(age),
+  is.character(gender),
+  is.numeric(income),
+  age < 120,
+  gender %in% c("female", "male", "other", "prefer not to disclose"))
+
+out <- confront(d_issues, rules)
+summary(out)
+```
+
+```{r}
+simulated_class_data <-
+  tibble(
+    response = c(1, 1, 0, 1, 0, 1, 1, 0, 0),
+    group = c(1, 2, 1, 1, 2, 3, 1, 2, 3)
+  ) |>
+  mutate(
+    group_as_integer = as.integer(group),
+    group_as_factor = as.factor(group),
+  )
+
+models <- list(
+  "Group as integer" = glm(
+    response ~ group_as_integer,
+    data = simulated_class_data,
+    family = "binomial"
+  ),
+  "Group as factor" = glm(
+    response ~ group_as_factor,
+    data = simulated_class_data,
+    family = "binomial"
+  )
+)
+modelsummary(models)
 ```
 
