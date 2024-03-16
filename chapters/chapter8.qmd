@@ -397,3 +397,193 @@ if (max(d$marathon_time) < 300 &
   print("OH OH")
 }
 ```
+
+
+### real life examples
+
+```{r}
+set.seed(99)
+
+age_group <-
+  tibble(starter = 0:19) |> 
+    mutate(lower = starter*5, upper = starter * 5 + 4) |> 
+    unite(string_seq, lower, upper, sep = "-") |> 
+    pull(string_seq)
+
+mean_value <- 10
+
+d_sim <-
+  tibble(
+    age_group = age_group,
+    urban_male = round(rnorm(length(age_group), mean_value)),
+    urban_female = round(rnorm(length(age_group), mean_value)),
+    rural_male = round(rnorm(length(age_group), mean_value)),
+    rural_female = round(rnorm(length(age_group), mean_value)),
+    total_male = round(rnorm(length(age_group), mean_value)),
+    total_female = round(rnorm(length(age_group), mean_value))
+  ) |>
+  mutate(
+    urban_total = urban_male + urban_female,
+    rural_total = rural_male + rural_female,
+    total_total = total_male + total_female
+  )
+
+d_sim
+
+download.file(
+  url = "https://dhsprogram.com/pubs/pdf/FR83/FR83.pdf",
+  destfile = "1996_Tanzania_DHS.pdf",
+  mode = "wb"
+)
+
+tanzania_d <- 
+pdf_text(
+    pdf = "1996_Tanzania_DHS.pdf"
+  )
+
+table_page33 <- 
+stri_split_lines(tanzania_d[[33]])[[1]]
+
+d <- 
+table_page33[31:55]
+
+d <- tibble(all = d)
+```
+
+### kenyan
+
+```{r}
+census_url <-
+  paste0(
+    "https://www.knbs.or.ke/download/2019-kenya-population-and-",
+    "housing-census-volume-iii-distribution-of-population-by-age-",
+    "sex-and-administrative-units/?wpdmdl=5729&refresh=",
+    "620561f1ce3ad1644519921"
+  )
+
+download.file(
+  url = census_url,
+  destfile = "2019_Kenya_census.pdf",
+  mode = "wb"
+)
+
+kenya_census <-
+  pdf_text(
+    pdf = "2019_Kenya_census.pdf"
+  )
+
+# Focus on the page of interest
+just_nairobi <- stri_split_lines(kenya_census[[410]])[[1]]
+
+# Remove blank lines
+just_nairobi <- just_nairobi[just_nairobi != ""]
+
+# Remove titles, headings and other content at the top of the page
+just_nairobi <- just_nairobi[5:length(just_nairobi)]
+
+# Remove page numbers and other content at the bottom of the page
+just_nairobi <- just_nairobi[1:62]
+
+# Convert into a tibble
+demography_data <- tibble(all = just_nairobi)
+
+demography_data <-
+  demography_data |>
+  mutate(all = str_squish(all)) |>
+  mutate(all = str_replace(all, "10 -14", "10-14")) |>
+  mutate(all = str_replace(all, "Not Stated", "NotStated")) |>
+  # Deal with the two column set-up
+  separate(
+    col = all,
+    into = c(
+      "age", "male", "female", "total",
+      "age_2", "male_2", "female_2", "total_2"
+    ),
+    sep = " ",
+    remove = TRUE,
+    fill = "right",
+    extra = "drop"
+  )
+
+
+demography_data_long <-
+  rbind(
+    demography_data |> select(age, male, female, total),
+    demography_data |>
+      select(age_2, male_2, female_2, total_2) |>
+      rename(
+        age = age_2,
+        male = male_2,
+        female = female_2,
+        total = total_2
+        )
+    )
+# There is one row of NAs, so remove it
+demography_data_long <-
+  demography_data_long |>
+  remove_empty(which = c("rows"))
+
+demography_data_long
+
+demography_data_long |>
+  select(male, female, total) |>
+  mutate(across(everything(), ~ str_remove_all(., "[:digit:]"))) |>
+  distinct()
+
+demography_data_long <-
+  demography_data_long |>
+  mutate(across(c(male, female, total), ~ str_remove_all(., ","))) |>
+  mutate(across(c(male, female, total), ~ as.integer(.)))
+
+demography_data_long
+
+demography_data_long <-
+  demography_data_long |>
+  mutate(
+    age_type = if_else(str_detect(age, "-"), 
+                       "age-group", 
+                       "single-year"),
+    age_type = if_else(str_detect(age, "Total"), 
+                       "age-group", 
+                       age_type)
+  ) |>
+  mutate(
+    age = as_factor(age)
+  )
+```
+
+```{r}
+demography_data_tidy <-
+  demography_data_long |>
+  rename_with(~paste0(., "_total"), male:total) |>
+  pivot_longer(cols = contains("_total"), 
+               names_to = "type", 
+               values_to = "number") |>
+  separate(
+    col = type,
+    into = c("gender", "part_of_area"),
+    sep = "_"
+  ) |>
+  select(age, age_type, gender, number)
+
+demography_data_tidy |>
+  filter(age_type == "single-year") |>
+  select(age, gender, number) |>
+  filter(gender != "total") |>
+  ggplot(aes(x = age, y = number, fill = gender)) +
+  geom_col(aes(x = age, y = number, fill = gender), 
+           position = "dodge") +
+  scale_y_continuous(labels = comma) +
+  scale_x_discrete(breaks = c(seq(from = 0, to = 99, by = 5), "100+")) +
+  scale_fill_manual(values = c("red", "#5AACCF")) +
+  theme_minimal() +
+  labs(
+    y = "Number",
+    x = "Age",
+    fill = "Gender",
+    caption = "Data source: 2019 Kenya Census"
+  ) +
+  theme(legend.position = "bottom") +
+  coord_flip()
+
+```
