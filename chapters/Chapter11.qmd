@@ -1,0 +1,109 @@
+---
+title: "Chapter 11"
+author: Leonhard Reiter
+format: 
+  html:
+    theme: cosmo
+    html-table-processing: none
+    html-math-method: katex
+    self-contained: true
+    toc: true
+    toc-depth: 3
+editor_options: 
+  chunk_output_type: console
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+### Stuff from R4DS 2nd Edition
+
+```{r}
+library(tidyverse)
+theme_set(theme_bw() +
+            theme(
+              panel.grid = element_blank(),
+              plot.title.position = "plot"
+            ))
+
+diamonds |> 
+  ggplot(aes(carat)) +
+  geom_histogram(binwidth = .5, fill = "grey50")
+
+diamonds |> 
+  filter(carat < 3) |> 
+  ggplot(aes(carat)) +
+  geom_histogram(binwidth = .01, fill = "grey50")
+
+diamonds |> 
+  ggplot(aes(x = y)) +
+  geom_histogram(binwidth = .5, fill = "grey50") +
+  coord_cartesian(ylim = c(0,50))
+
+nycflights13::flights |> 
+  mutate(
+    cancelled = is.na(dep_time),
+    sched_hour = sched_dep_time %/% 100,
+    sched_min = sched_dep_time %% 100,
+    sched_dep_time = sched_hour + (sched_min / 60)
+  ) |> 
+  ggplot(aes(x = sched_dep_time)) + 
+  geom_freqpoly(aes(color = cancelled), binwidth = 1/4) +
+  facet_grid(~cancelled)
+
+ggplot(diamonds, aes(x = price, y = after_stat(density))) + 
+  geom_freqpoly(aes(color = cut), binwidth = 500, linewidth = 0.75) + theme_grey()
+
+ggplot(mpg, aes(x = fct_reorder(class, hwy, median), y = hwy)) +
+  geom_boxplot()
+
+diamonds |> 
+  count(color, cut) |>  
+  ggplot(aes(x = color, y = cut)) +
+  geom_tile(aes(fill = n)) + scale_fill_barbie() + theme_barbie()
+
+smaller <- diamonds |> filter(carat < 3)
+ggplot(smaller, aes(x = carat, y = price)) +
+  geom_bin2d() + scale_fill_barbie() + theme_barbie()
+
+# install.packages("hexbin")
+ggplot(smaller, aes(x = carat, y = price)) +
+  geom_hex() + scale_fill_barbie() + theme_barbie()
+
+library(tidymodels)
+
+diamonds <- diamonds |>
+  mutate(
+    log_price = log(price),
+    log_carat = log(carat)
+  )
+
+diamonds_fit <- linear_reg(engine = "stan") |>
+  fit(log_price ~ log_carat, data = diamonds)
+
+diamonds_aug <- augment(diamonds_fit, new_data = diamonds) |>
+  mutate(.resid = exp(.resid))
+
+ggplot(diamonds_aug, aes(x = carat, y = .resid)) + 
+  geom_point()
+```
+
+# Lets go
+
+```{r}
+library(arrow)
+library(janitor)
+library(knitr)
+library(lubridate)
+library(mice)
+library(modelsummary)
+library(naniar)
+library(opendatatoronto)
+library(tidyverse)
+```
+
+## State
+```{r}
+
+```
+
