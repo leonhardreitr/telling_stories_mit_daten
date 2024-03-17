@@ -219,3 +219,18 @@ mice_estimates <-
 mice_estimates
 ```
 
+## TTC subway delays
+
+```{r}
+all_2021_ttc_data <-
+  list_package_resources("996cfe8d-fb35-40ce-b569-698d51fc683b") |>
+  filter(name == "ttc-subway-delay-data-2021") |>
+  get_resource() |>
+  bind_rows() |>
+  clean_names()
+
+write_csv(all_2021_ttc_data, "all_2021_ttc_data.csv")
+
+all_2021_ttc_data
+```
+
