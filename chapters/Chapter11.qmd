@@ -104,6 +104,49 @@ library(tidyverse)
 
 ## State
 ```{r}
+us_populations <- 
+  state.x77 |> 
+  as_tibble() |> 
+  clean_names() |> 
+  mutate(state = rownames(state.x77)) |> 
+    select(state, population, income)
 
+us_populations
+head(us_populations); tail(us_populations)
+slice_sample(us_populations, n = 6)
+
+us_populations |>
+  glimpse()
+
+summary(us_populations)
+```
+
+```{r}
+sample_means <- tibble(seed = c(),
+                       mean = c(),
+                       states_ignored = c())
+for (i in c(1:5)) {
+  set.seed(i)
+  dont_get <- c(sample(x = state.name, size = 5))
+  sample_means <- 
+  sample_means |> 
+    rbind(tibble(
+      seed = i,
+      mean = 
+        us_populations |> 
+        filter(!state %in% dont_get) |> 
+        summarise(mean = mean(population)) |> 
+        pull(),
+      states_ignored = str_c(dont_get, collapse = ", ")
+    ))
+}
+
+sample_means |>
+  kable(
+    col.names = c("Seed", "Mean", "Ignored states"),
+    digits = 0,
+    format.args = list(big.mark = ","),
+    booktabs = TRUE
+  )
 ```
 
