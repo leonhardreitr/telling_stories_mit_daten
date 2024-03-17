@@ -20,6 +20,7 @@ editor:
 
 ```{r}
 library(tidyverse)
+library(ThemePark)
 theme_set(theme_bw() +
             theme(
               panel.grid = element_blank(),
@@ -99,7 +100,7 @@ library(mice)
 library(modelsummary)
 library(naniar)
 library(opendatatoronto)
-library(tidyverse)
+config_modelsummary(factory_default = 'tinytable')
 ```
 
 ## State
@@ -148,5 +149,73 @@ sample_means |>
     format.args = list(big.mark = ","),
     booktabs = TRUE
   )
+```
+
+#### MCAR
+
+```{r}
+set.seed(999)
+
+remove_random_states <- 
+  sample(x = state.name, size = 3, replace = F)
+
+us_states_MCAR <- 
+  us_populations |> 
+  mutate(
+    population =
+      if_else(state %in% remove_random_states, NA_real_, population)
+  )
+
+
+summary(us_states_MCAR)
+```
+
+#### MAR
+
+```{r}
+highest_income <- 
+  us_populations |> 
+  slice_max(income, n = 3) |> 
+  pull(state)
+
+us_states_MAR <- 
+  us_populations |> 
+  mutate(
+    population = 
+      if_else(state %in% highest_income, NA_real_, population)
+  )
+
+summary(us_states_MAR)
+```
+
+
+#### MNAR
+
+```{r}
+highest_population_states <-
+  us_populations |>
+  slice_max(population, n = 3) |>
+  pull(state)
+
+us_states_MNAR <-
+  us_populations |>
+  mutate(population =
+           if_else(state %in% highest_population_states,
+                   NA_real_,
+                   population))
+
+us_states_MNAR
+
+multiple_imputation <-
+  mice(
+    us_states_MCAR,
+    print = FALSE
+  )
+
+mice_estimates <-
+  complete(multiple_imputation) |>
+  as_tibble()
+
+mice_estimates
 ```
 
