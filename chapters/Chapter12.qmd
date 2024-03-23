@@ -1,0 +1,17 @@
+---
+title: "Chapter 12"
+author: Leonhard Reiter
+format: 
+  html:
+    theme: cosmo
+    html-table-processing: none
+    html-math-method: katex
+    self-contained: true
+    toc: true
+    toc-depth: 3
+editor_options: 
+  chunk_output_type: console
+editor: 
+  markdown: 
+    wrap: 72
+---
