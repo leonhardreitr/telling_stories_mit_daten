@@ -15,3 +15,57 @@ editor:
   markdown: 
     wrap: 72
 ---
+
+```{r}
+#| code-fold: true
+#| code-summary: Packages
+#| message: false
+
+library(beepr)
+library(broom)
+library(broom.mixed)
+library(knitr)
+library(modelsummary)
+library(purrr)
+library(rstanarm)
+library(testthat)
+library(tidyverse)
+```
+
+```{r}
+set.seed(420)
+
+normal_example <-
+  tibble(draws = rnorm(n = 20, mean = 0, sd = 1))
+
+normal_example |> pull(draws)
+
+estimated_mean <-
+  sum(normal_example$draws) / nrow(normal_example)
+
+normal_example <-
+  normal_example |>
+  mutate(diff_square = (draws - estimated_mean) ^ 2)
+
+estimated_standard_deviation <-
+  sqrt(sum(normal_example$diff_square) / (nrow(normal_example) - 1))
+
+estimated_standard_error <-
+  estimated_standard_deviation / sqrt(nrow(normal_example))
+
+kable(
+  tibble(mean = estimated_mean,
+         sd = estimated_standard_deviation,
+         se = estimated_standard_error),
+  col.names = c(
+    "Estimated mean",
+    "Estimated standard deviation",
+    "Estimated standard error"
+  ),
+  digits = 2,
+  align = c("l", "r", "r"),
+  booktabs = TRUE,
+  linesep = ""
+  )
+```
+
