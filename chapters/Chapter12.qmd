@@ -45,7 +45,7 @@ estimated_mean <-
 
 normal_example <-
   normal_example |>
-  mutate(diff_square = (draws - estimated_mean) ^ 2)
+  mutate(diff_square = (draws - estimated_mean) ^ 2 )
 
 estimated_standard_deviation <-
   sqrt(sum(normal_example$diff_square) / (nrow(normal_example) - 1))
